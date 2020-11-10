@@ -5,20 +5,22 @@ import Draggable from "react-draggable";
 import { NodeInputList } from "./NodeInput";
 import { NodeOutputList } from "./NodeOutputList";
 import { motion } from "framer-motion";
+import { selectorFamily, useRecoilState } from "recoil";
 import {
-  selectorFamily,
-  useRecoilState,
-} from "recoil";
-import { nodeTypeByID, nodePositionByID, inputIDsByNodeID, outputIDsByNodeID } from "./store";
+  nodeTypeByID,
+  nodePositionByID,
+  inputIDsByNodeID,
+  outputIDsByNodeID,
+} from "./store";
 
-export const Node = ({ nodeId }) => {
+export const Node = React.memo(({ nodeID }: { nodeID: string }) => {
   const [isSelected, setIsSelected] = React.useState(false);
-  const [nodeType] = useRecoilState(nodeTypeByID(nodeId));
+  const [nodeType] = useRecoilState(nodeTypeByID(nodeID));
   const [nodePosition, setNodePosition] = useRecoilState(
-    nodePositionByID(nodeId)
+    nodePositionByID(nodeID)
   );
-  const [nodeInputIDs] = useRecoilState(inputIDsByNodeID(nodeId));
-  const [nodeOutputIDs] = useRecoilState(outputIDsByNodeID(nodeId));
+  const [nodeInputIDs] = useRecoilState(inputIDsByNodeID(nodeID));
+  const [nodeOutputIDs] = useRecoilState(outputIDsByNodeID(nodeID));
 
   return (
     <ControlledNode
@@ -29,7 +31,7 @@ export const Node = ({ nodeId }) => {
       onNodeMove={(id, pos) => {
         setNodePosition({ x: pos.x, y: pos.y });
       }}
-      nodeId={nodeId}
+      nodeId={nodeID}
       onStartConnector={() => {}}
       onCompleteConnector={() => {}}
       onNodeStop={() => {}}
@@ -39,7 +41,7 @@ export const Node = ({ nodeId }) => {
       outputs={nodeOutputIDs}
     />
   );
-};
+});
 
 export const ControlledNode = ({
   onNodeDeselect,

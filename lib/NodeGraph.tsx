@@ -2,17 +2,83 @@ import React, { useState, useRef } from "react";
 import { computeOutOffsetByIndex, computeInOffsetByIndex } from "./Util";
 import { Spline } from "./Spline";
 import { Node } from "./Node";
-import { visibleNodeIDs } from "./store";
-import { useRecoilState } from "recoil";
+import {
+  nodeIDs,
+  nodePositionByID,
+  connectionParamsByID,
+  inputIDsByNodeID,
+  inputStateByID,
+  outputStateByID,
+  connectionIDs,
+} from "./store";
+import { useRecoilState, selectorFamily, useRecoilValue } from "recoil";
 import { motion } from "framer-motion";
 
-function Nodes({ nodeIDs }) {
+function Nodes() {
+  const allNodeIDs = useRecoilValue(nodeIDs);
+
   return (
     <>
-      {nodeIDs.map((id) => {
-        return <Node nodeId={id} key={id} />;
+      {allNodeIDs.map((id) => {
+        return <Node nodeID={id} key={id} />;
       })}
     </>
+  );
+}
+
+const connectionGeometryByID = selectorFamily({
+  key: "connectionGeometry",
+  get: (id) => ({ get }) => {
+    const params = get(connectionParamsByID(id));
+
+    const fromNode = get(nodePositionByID(params.fromNode));
+    const toNode = get(nodePositionByID(params.toNode));
+
+    const toField = get(inputStateByID(params.inputField));
+    const fromField = get(outputStateByID(params.outputField));
+
+    let splinestart = computeOutOffsetByIndex(
+      fromNode.x,
+      fromNode.y,
+      fromField.index
+    );
+    let splineend = computeInOffsetByIndex(toNode.x, toNode.y, toField.index);
+
+    return { start: splinestart, end: splineend };
+  },
+});
+
+function Connection({ connectionID }) {
+  const { start, end } = useRecoilValue(connectionGeometryByID(connectionID));
+
+  return (
+    <Spline
+      start={start}
+      end={end}
+      //   mousePos={mousePos}
+      //   onRemove={() => handleRemoveConnector(connector)}
+    />
+  );
+}
+
+function Connections() {
+  const allConnectionIDs = useRecoilValue(connectionIDs);
+
+  const svgRef = useRef();
+  return (
+    <svg
+      style={{
+        position: "absolute",
+        height: "100%",
+        width: "100%",
+        zIndex: 9000,
+      }}
+      ref={svgRef}
+    >
+      {allConnectionIDs.map((id) => {
+        return <Connection connectionID={id} key={id} />;
+      })}
+    </svg>
   );
 }
 
@@ -28,7 +94,6 @@ export const NodeGraph = (
   }
 ) => {
   //   const [dataS, setDataS] = useState(data);
-  const [nodeIDs] = useRecoilState(visibleNodeIDs);
   const [source, setSource] = useState([]);
   const [dragging, setDragging] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -171,62 +236,13 @@ export const NodeGraph = (
     //       <Tools {...{ zoomIn, zoomOut, resetTransform }} />
     //       <TransformComponent>
     <motion.div
-      style={{ height: "100vh", position: "relative" }}
+      className='full'
       //   className={dragging ? "dragging" : ""}
       //   onMouseMove={onMouseMove}
       //   onMouseUp={onMouseUp}
     >
-      <Nodes nodeIDs={nodeIDs} />
-      {/* <svg
-        style={{
-          position: "absolute",
-          height: "100%",
-          width: "100%",
-          zIndex: 9000,
-        }}
-        ref={svgRef}
-      >
-        {data.connections.map((connector) => {
-          // console.log(data);
-          // console.log(connector);
-          let fromNode = getNodeById(data.nodes, connector.from_node);
-          let toNode = getNodeById(data.nodes, connector.to_node);
-
-          let splinestart = computeOutOffsetByIndex(
-            fromNode.x,
-            fromNode.y,
-            computePinIdxfromLabel(fromNode.fields.out, connector.from)
-          );
-          let splineend = computeInOffsetByIndex(
-            toNode.x,
-            toNode.y,
-            computePinIdxfromLabel(toNode.fields.in, connector.to)
-          );
-
-          return (
-            <Spline
-              start={splinestart}
-              end={splineend}
-              key={splineIdx++}
-              mousePos={mousePos}
-              onRemove={() => handleRemoveConnector(connector)}
-            />
-          );
-        })}
-        {newConn}
-      </svg>
-    </div> */}
-      {/* //       </TransformComponent> */}
+      <Nodes />
+      <Connections />
     </motion.div>
   );
 };
-
-function Tools({ zoomIn, zoomOut, resetTransform }) {
-  return (
-    <div className="tools">
-      <button onClick={zoomIn}>+</button>
-      <button onClick={zoomOut}>-</button>
-      <button onClick={resetTransform}>x</button>
-    </div>
-  );
-}
