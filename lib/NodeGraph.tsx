@@ -1,18 +1,15 @@
 import React, { useState, useRef } from "react";
-import { computeOutOffsetByIndex, computeInOffsetByIndex } from "./Util";
-import { Spline } from "./Spline";
 import { Node } from "./Node";
+import { nodeIDs, connectionIDs } from "./store";
 import {
-  nodeIDs,
-  nodePositionByID,
-  connectionParamsByID,
-  inputIDsByNodeID,
-  inputStateByID,
-  outputStateByID,
-  connectionIDs,
-} from "./store";
-import { useRecoilState, selectorFamily, useRecoilValue } from "recoil";
+  atom,
+  useRecoilState,
+  useRecoilValue,
+  useSetRecoilState,
+} from "recoil";
 import { motion } from "framer-motion";
+import { Connection } from "./Connection";
+import { makeMonitor, useTweaks } from "use-tweaks";
 
 function Nodes() {
   const allNodeIDs = useRecoilValue(nodeIDs);
@@ -26,55 +23,12 @@ function Nodes() {
   );
 }
 
-const connectionGeometryByID = selectorFamily({
-  key: "connectionGeometry",
-  get: (id) => ({ get }) => {
-    const params = get(connectionParamsByID(id));
-
-    const fromNode = get(nodePositionByID(params.fromNode));
-    const toNode = get(nodePositionByID(params.toNode));
-
-    const toField = get(inputStateByID(params.inputField));
-    const fromField = get(outputStateByID(params.outputField));
-
-    let splinestart = computeOutOffsetByIndex(
-      fromNode.x,
-      fromNode.y,
-      fromField.index
-    );
-    let splineend = computeInOffsetByIndex(toNode.x, toNode.y, toField.index);
-
-    return { start: splinestart, end: splineend };
-  },
-});
-
-function Connection({ connectionID }) {
-  const { start, end } = useRecoilValue(connectionGeometryByID(connectionID));
-
-  return (
-    <Spline
-      start={start}
-      end={end}
-      //   mousePos={mousePos}
-      //   onRemove={() => handleRemoveConnector(connector)}
-    />
-  );
-}
-
 function Connections() {
   const allConnectionIDs = useRecoilValue(connectionIDs);
 
   const svgRef = useRef();
   return (
-    <svg
-      style={{
-        position: "absolute",
-        height: "100%",
-        width: "100%",
-        zIndex: 9000,
-      }}
-      ref={svgRef}
-    >
+    <svg className="h-full w-full z-20 absolute" ref={svgRef}>
       {allConnectionIDs.map((id) => {
         return <Connection connectionID={id} key={id} />;
       })}
@@ -82,23 +36,31 @@ function Connections() {
   );
 }
 
-export const NodeGraph = (
-  {
-    //   data,
-    //   onNodeDeselect,
-    //   onNodeMove,
-    //   onNodeStartMove,
-    //   onNodeSelect,
-    //   onNewConnector,
-    //   onRemoveConnector,
-  }
-) => {
-  //   const [dataS, setDataS] = useState(data);
-  const [source, setSource] = useState([]);
-  const [dragging, setDragging] = useState(false);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+const canvasCamera = atom({
+  key: "canvasCamera",
+  default: {
+    scale: 1,
+    x: 0,
+    y: 0,
+  },
+});
 
-  const svgRef = useRef();
+let resizeObserver;
+
+if (typeof window !== "undefined") {
+  // @ts-ignore
+  resizeObserver = new ResizeObserver((entries) => {
+    // iterate over the entries, do something.
+    console.log(entries);
+  });
+} else {
+  resizeObserver = null;
+}
+
+export const NodeGraph = () => {
+  // const [] = useState([]);
+  // const [] = useState(false);
+  // const [] = useState({ x: 0, y: 0 });
 
   //   const onMouseMove = (e) => {
   //     let [pX, pY] = [e.clientX, e.clientY];
@@ -222,27 +184,48 @@ export const NodeGraph = (
   //     // console.log(mousePos);
   //     newConn = <Spline start={connectorStart} end={connectorEnd} />;
   //   }
-
-  let splineIdx = 0;
-
+  const zoom = useRecoilValue(canvasCamera);
+  console.log(resizeObserver);
   return (
-    // <TransformWrapper
-    //   defaultScale={1}
-    //   defaultPositionX={200}
-    //   defaultPositionY={100}
-    // >
-    //   {({ zoomIn, zoomOut, resetTransform, ...rest }) => (
-    //     <>
-    //       <Tools {...{ zoomIn, zoomOut, resetTransform }} />
-    //       <TransformComponent>
-    <motion.div
-      className='full'
-      //   className={dragging ? "dragging" : ""}
-      //   onMouseMove={onMouseMove}
-      //   onMouseUp={onMouseUp}
-    >
-      <Nodes />
-      <Connections />
-    </motion.div>
+    <div className="relative">
+      <motion.div
+        className="bg-blue-100 absolute canvas"
+        style={{ scale: zoom.scale, x: zoom.x, y: zoom.y }}
+      >
+        <div className="relative  w-full h-full">
+          <Connections />
+          <Nodes />
+        </div>
+      </motion.div>
+      <Tools />
+    </div>
   );
 };
+
+function Tools() {
+  const [camera, setCanvasZoom] = useRecoilState(canvasCamera);
+
+  return (
+    <div className="absolute top-8 left-8" style={{ zIndex: 100000 }}>
+      <motion.button
+        className="bg-white"
+        onTap={() => {
+          console.log("here");
+          setCanvasZoom((z) => ({ ...z, scale: z.scale + 0.1 }));
+        }}
+      >
+        + Zoom In
+      </motion.button>
+      <motion.button
+        className="bg-white ml-4"
+        onTap={() => {
+          console.log("here");
+          setCanvasZoom((z) => ({ ...z, scale: z.scale - 0.1 }));
+        }}
+      >
+        - Zoom Out
+      </motion.button>
+      <pre>{JSON.stringify(camera, null, 2)</pre>
+    </div>
+  );
+}

@@ -105,33 +105,34 @@ export const ControlledNode = ({
   // };
 
   let nodeClass = `node ${isSelected ? " selected" : ""}`;
+  const ref = React.useRef();
+
+  React.useLayoutEffect(() => {}, []);
 
   return (
-    <motion.div>
-      <Draggable
-        position={pos}
-        handle=".node-header"
-        onStart={(eve, ui) => handleDragStart(eve, ui)}
-        onStop={(eve, ui) => handleDragStop(eve, ui)}
-        onDrag={(eve, ui) => handleDrag(eve, ui)}
-      >
-        <section className={nodeClass} style={{ zIndex: 10000 }}>
-          <header className={"node-header"}>
-            <span className={"node-title"}>{title}</span>
-          </header>
-          <div className={"node-content"}>
-            <NodeInputList
-              items={inputs}
-              onCompleteConnector={(idx) => handleOnCompleteConnector(idx)}
-            />
-            <NodeOutputList
-              items={outputs}
-              onStartConnector={(idx) => handleOnStartConnector(idx)}
-            />
-          </div>
-        </section>
-      </Draggable>
-    </motion.div>
+    <Draggable
+      position={pos}
+      handle=".node-header"
+      onStart={(eve, ui) => handleDragStart(eve, ui)}
+      onStop={(eve, ui) => handleDragStop(eve, ui)}
+      onDrag={(eve, ui) => handleDrag(eve, ui)}
+    >
+      <section className="node absolute" ref={ref} style={{ zIndex: 10000 }}>
+        <header className={"node-header"}>
+          <span className={"node-title"}>{title}</span>
+        </header>
+        <div className={"node-content"}>
+          <NodeInputList
+            items={inputs}
+            onCompleteConnector={(idx) => handleOnCompleteConnector(idx)}
+          />
+          <NodeOutputList
+            items={outputs}
+            onStartConnector={(idx) => handleOnStartConnector(idx)}
+          />
+        </div>
+      </section>
+    </Draggable>
   );
 };
 
